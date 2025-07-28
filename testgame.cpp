@@ -40,25 +40,52 @@ void TestGame::draw(sf::RenderTarget& target, sf::RenderStates states) const
 	for (int i=0; i<18 ; i++) target.draw(Figurs[i]);
 }
 
-
 void TestGame::PCgo(int d)
 {
-	int useful = -1; ;
+	static int fig=0;
+	static int j =1;
+	
+	for (int i=0; i<19; i++)
+	{
+		if (Figurs[fig].Stop) continue;	
+		if (j and check(fig, Figurs[fig].pos.x+1, Figurs[fig].pos.y)) 
+			{MoveFigure(fig, Figurs[fig].pos.x+1, Figurs[fig].pos.y); if (++fig>=9) fig=0; return;} 
+		else
+		if (!j and check(fig, Figurs[fig].pos.x, Figurs[fig].pos.y+1)) 
+			{MoveFigure(fig, Figurs[fig].pos.x, Figurs[fig].pos.y+1); if (++fig>=9) fig=0; return;}
+		if (++fig>=9) fig=0;	
+		j ^= 1;	
+		std::cout << "j= "<< j << std::endl;
+				
+	}
+	
+ }
+
+void TestGame::PCgo111(int d)
+{
+	int useful = -1; 
+	
+	static int strateg=1;
+	int targertFunc[9]={0};
+	
 	int usefulX;
 	int usefulY;
 			
 	int fig=0;
-	int steps=1000;
+	//int steps=1000;
 	
 	int count=1000;
 	int min=1000;
 	//------------------------------strateg 1------------------------------------------------
+	if (strateg==0)
+	{	
 	for(int i=0; i<8; i++)
 		for(int j=0; j<8; j++)
 			if ((board.state[i][j]>=0)&&(board.state[i][j]<9)) 
 			{
 				fig=board.state[i][j];
 				if (Figurs[fig].Stop) continue;
+
 				int NewX[2]={i, i+1};
 				int NewY[2]={j+1, j};
 				int D[2] = {(7-NewX[0])*(7-NewX[0])+(7-NewY[0])*(7-NewY[0]), (7-NewX[1])*(7-NewX[1])+(7-NewY[1])*(7-NewY[1])};
@@ -78,45 +105,70 @@ void TestGame::PCgo(int d)
 		std::cout << "Go figure strateg 1 fig= "<< useful << " x= "<< usefulX<<"  y="<< usefulY <<std::endl;
 		return;
 	}
+	else strateg=1;
+	}
 	
 	//-----------------------------strateg 2-----------------------------------------------
-
+	else // выбор стратегии
+	{	
 	for (fig=8; fig>=0; fig--)
 	{
 		if (Figurs[fig].Stop) continue;	
+		//if (fig == oldUseful) continue;
 		
 		if (!treks[fig].empty())
 			if ((Figurs[fig].pos.x != treks[fig].back().x1)||(Figurs[fig].pos.y != treks[fig].back().y1)) treks[fig].clear();
 		
 		if (treks[fig].empty()) treks[fig] = NewTrace(fig);
 		if (treks[fig].empty()) continue;	
-				
-		if ((check(fig, treks[fig].back().x2, treks[fig].back().y2))&&(steps >= treks[fig].front().step)		
-				) 
-		{ 
-				steps = treks[fig].front().step; 
-				useful = fig;						
-		}
+		
+		targertFunc[fig]=0;
+		//if (check(fig, treks[fig].back().x2, treks[fig].back().y2))
+		for (int i=8; i>=0; i--) 
+		{
+			if (i==fig) targertFunc[fig] += treks[fig].back().x2  *  treks[fig].back().y2 ;
+			else targertFunc[fig] += Figurs[i].pos.x * Figurs[i].pos.y;
+			//targertFunc[fig] += 9-fig;
+			//if (Figurs[i].pos.x>=5 and Figurs[i].pos.y>=5) targertFunc[fig] /=10;
+		} 
+						
 	}
+	
+	int mtf=0;
+	for (fig=8; fig>=0; fig--) 
+	{
+		if ((targertFunc[fig] > mtf) and check(fig, treks[fig].back().x2, treks[fig].back().y2))
+		{
+			mtf = targertFunc[fig];
+			useful = fig;				
+		}
+
+	}
+	std::cout << "targertFunc= " << targertFunc[0] << " " << targertFunc[1] << " " << targertFunc[2] << " " << targertFunc[3]  << " " 
+				<< targertFunc[4] << " " << targertFunc[5] << " " << targertFunc[6] << " "  << targertFunc[7] << " "  << targertFunc[8]  << std::endl;
+	 std::cout << "useful= " << useful << std::endl;
 	
 	if (useful != -1) 
 	{
 		int x = treks[useful].back().x2; 
 		int y = treks[useful].back().y2;
 		treks[useful].pop_back();
-		if (treks[useful].empty() && (!Figurs[fig].Stop)) 
+		/*if (treks[useful].empty() && (!Figurs[fig].Stop)) 
 		{
 			treks[useful].clear();
 			treks[useful] = NewTrace(useful);
-		}
+		}*/
 		
 		MoveFigure(useful, x, y);
 		std::cout << "Go figure strateg 2 fig= "<< useful << " x= "<< x<<"  y="<< y<<std::endl;
 		return;
 	}//else 	
 		//if (CalculateNewWays() !=0 ) return PCgo(1);
-																
+
+	
+	} // выбор стратегии															
 	return;
+	
 }
 
 int TestGame::CalculateNewWays()
@@ -134,6 +186,7 @@ int TestGame::CalculateNewWays()
 
 std::vector<TypeWay> TestGame::NewTrace(int fig)
 {
+	
 	int x = Figurs[fig].pos.x;
 	int y = Figurs[fig].pos.y;
 
@@ -144,8 +197,13 @@ std::vector<TypeWay> TestGame::NewTrace(int fig)
 	
 	for (k=0; k<9; k++)
 	{
-		if (abs(board.state[k%3][k/3])==255) res[k++] = Trace(x, y, 7 - k%3,  7 - k/3);
+		if (abs(board.state[7-k%3][7-k/3])==255) 
+		{
+			res[k] = Trace(x, y, 7 - k%3,  7 - k/3);
 			std::cout << "NewTrace for " << fig << " targetX= "<<7 - k%3<<" targetY= "<<7 - k/3<<std::endl;
+			std::cout << res[k].size() << std::endl;
+				
+		}
 	}
 	
 	for (k=0; k<9; k++)
@@ -166,8 +224,25 @@ bool TestGame::check(int fig, int x, int y) // проверка возможно
 	int dx = abs(Figurs[fig].pos.x - x);
 	int dy = abs(Figurs[fig].pos.y - y);
 	if  (abs(board.state[x][y])==255) 
-			if (((dx==1) && (dy==0))||((dx==0) && (dy==1)) ) return true;
-	else return false;
+			if (((dx==1) && (dy==0))||((dx==0) && (dy==1)) ) 
+			{
+				if (fig >= 9) return true;
+				int f = Figurs[fig].N;
+				if (dy==1)
+				{
+					if ((f==0 or f==1 or f==2)and(y<=5)) return true;
+					if ((f==3 or f==4 or f==5)and(y<=6)) return true;
+					if ((f==6 or f==7 or f==8)and(y<=7)) return true;
+				}
+				
+				if (dx==1)
+				{
+					if ((f==0 or f==3 or f==6)and(x<=5)) return true;
+					if ((f==1 or f==4 or f==7)and(x<=6)) return true;
+					if ((f==2 or f==5 or f==8)and(x<=7)) return true;
+				}
+			}
+	return false;
 }
 
 void TestGame::MoveFigure(int fig, int x, int y) // перемещение фигуры в позицию (x,y)
@@ -178,11 +253,11 @@ void TestGame::MoveFigure(int fig, int x, int y) // перемещение фи�
 	Figurs[fig].setPosition(x, y); 
 	Figurs[fig].CountSteps++;
 	
-	FixBlackFigures();
-	FixWhiteFigures(fig);
+	//FixBlackFigures();
+	//FixWhiteFigures(fig);
 	
 }
-
+/*
 void TestGame::FixBlackFigures()
 {
 	for (int fig=0; fig<9 ; fig++)
@@ -206,13 +281,13 @@ void TestGame::FixWhiteFigures(int fig)
 	int x = Figurs[fig].pos.x;
 	int y = Figurs[fig].pos.y;
 	
-	if ((x<=2)&&(y<=2)&&(Figurs[fig].player)&&																	
+	if ((x<=0)&&(y<=0)&&(Figurs[fig].player)&&																	
 			( (!check(fig, x-1, y)) || (!check(fig, x, y-1)) )
 	)	Figurs[fig].Stop = true;
 	
 	Figurs[fig].setTexture();
 }	
-
+*/
 bool TestGame::checkGoPlayer(int x, int y)
 {
 	int fig = abs(board.state[x][y]);

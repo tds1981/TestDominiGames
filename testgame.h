@@ -25,6 +25,7 @@ public:
 	void MoveFigure(int fig, int x, int y);
 	bool checkGoPlayer(int x, int y);
 	void PCgo(int d);
+	void PCgo111(int d);
 	bool check(int fig, int x, int y);
 	std::vector<TypeWay> Trace(int x1, int y1, int x2, int y2);
 	void markerTrace(std::vector<TypeWay> trace);
